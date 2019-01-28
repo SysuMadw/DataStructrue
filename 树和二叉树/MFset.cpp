@@ -30,7 +30,7 @@ void MixMFset(node* nodes, int i, int j, int num){
 //寻找元素对应的子集...
 int FindMFset(node* nodes, int i, int num){
 	if (i<0 || i>=n)
-		return;
+		return -1;
 	int k = 0;
 	for (k=i; nodes[k].parent>=0; k=nodes[k].parent);
 	int t,j;
