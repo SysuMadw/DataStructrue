@@ -62,7 +62,7 @@ string parse(TreeNode* nodes, int leaf, char num){
 		if (nodes[k].data == num)
 			break;
 	for (TreeNode* parent=&nodes[k].parent, *child=&nodes[k]; parent!=NULL; child=parent,parent=parent->parent){
-		if ((parent->left == child)
+		if (parent->left == child)
 			ans = '0' + ans;
 		else
 			ans = '1' + ans;

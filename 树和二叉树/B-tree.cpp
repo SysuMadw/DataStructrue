@@ -288,7 +288,7 @@ bool BTree::searchKey_BTree(int val, TreeNode*& node, int& index){
 		}
 		else {
 			node = p;
-			index = i;	//方便插入`
+			index = i;	//方便插入
 			p = p->ptr[i];
 		}
 	}

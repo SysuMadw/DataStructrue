@@ -17,6 +17,7 @@
 
 using namespace std;
 
+//树节点结构
 class TreeNode {
 	public:
 		char color;
@@ -25,11 +26,12 @@ class TreeNode {
 		TreeNode(int x) : val(x), color('r'), left(NULL), right(NULL), parent(NULL) {}
 };
 
+//左旋代码
 TreeNode* RR(TreeNode* root){
-	TreeNode* temp = root->right;
-	temp->parent = root->parent;
-	root->right = temp->left;
-	if (temp->left != NULL)
+	TreeNode* temp = root->right;	
+	temp->parent = root->parent;	
+	root->right = temp->left;		
+	if (temp->left != NULL)		
 		temp->left->parent = root;
 	if (root->parent != NULL){
 		if (root == root->parent->left)
@@ -42,6 +44,7 @@ TreeNode* RR(TreeNode* root){
 	return temp;
 }
 
+//右旋代码
 TreeNode* LL(TreeNode* root){
 	TreeNode* temp = root->left;
 	temp->parent = root->parent;
@@ -61,40 +64,44 @@ TreeNode* LL(TreeNode* root){
 
 void RB_insert_fixup(TreeNode*& root, TreeNode* newnode){
 	if (newnode == root)
-		newnode->color = 'b';
+		newnode->color = 'b';	//如果插入的节点为根节点，将节点颜色设置为黑色即回复完毕
 	else if (newnode->parent->color == 'b')
-		return;
+		return;					//如果插入节点的父节点为黑色节点，则不破坏红黑树的性质
 	else {
 		while (newnode->parent!=NULL && newnode->parent->color == 'r'){
+			//如果插入节点的父亲节点是红色，则破坏了红黑树的性质
 			if (newnode->parent == node->parent->parent->left){
+				//如果插入节点的父节点是祖先节点的左孩子
 				TreeNode* right = node->parent->parent->right;
 				if (right->color == 'r'){
 					//case 1 -- 插入节点的父节点红色，父亲节点的兄弟节点也是红色
+					//将父亲节点设置为黑色，叔叔节点设置为黑色，祖父节点设置为红色，再将当前节点设置为祖父节点
 					newnode->parent->color = 'b';
 					right->color = 'b';
 					newnode->parent->parent->color = 'r';
 					newnode = newnode->parent->parent;
 				}
-				else {	//叔叔节点是黑色
+				else {	
+					//叔叔节点是黑色
 					if (newnode->parent->right == newnode)	{
 						//case 2 插入节点是父节点的右孩子 
-						//将父节点作为新的当前节点
-						//以新的当前节点为支点进行左旋
+						//将父节点作为新的当前节点，以新的当前节点为支点进行左旋
 						newnode = newnode->parent;
-						RR(newnode);
+						RR(newnode);	//这样变换会变为case3情况
 					}
 					else {
 						//case 3 插入节点是父节点的左孩子
 						//将父节点设为黑色，祖父节点设为红色，以祖父节点为支点进行右旋
 						newnode->parent->color = 'b';
-						newnode->parent->parent = 'r';
+						newnode->parent->parent->color = 'r';
 						TreeNode* temp = LL(newnode->parent->parent);
 						if (temp->parent == NULL)
-							root = temp;
+							root = temp;	//经过case4变换，红黑树性质恢复
 					}
 				}
 			}
 			else{
+				//对称情况
 				TreeNode* left = node->parent->parent->left;
 				if (left->color == 'r'){
 					//case 1
@@ -107,13 +114,13 @@ void RB_insert_fixup(TreeNode*& root, TreeNode* newnode){
 					if (newnode->parent->left == newnode){
 						//case 2 
 						newnode = newnode->parent;
-						RR(newnode);
+						LL(newnode);
 					}
 					else {
 						//case 3
 						newnode->parent->color = 'b';
 						newnode->parent->parent->color = 'r';
-						TreeNode* temp = LL(newnode->parent->parent);
+						TreeNode* temp = RR(newnode->parent->parent);
 						if (temp->parent == NULL)
 							root = temp;
 					}
