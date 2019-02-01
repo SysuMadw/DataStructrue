@@ -53,10 +53,18 @@ class BTree {
 };
 
 void BTree::merge(TreeNode* parent, int index, TreeNode* left, TreeNode* cur){
-	for (int i=0; i<=cur->keynum; i++)
+	//将被删除关键字的剩余部分合并到相邻左节点
+	for (int i=0; i<=cur->keynum; i++){
 		left->key[left->keynum+1+i] = cur->key[i];
+		left->ptr[left->keynum+1+i] = cur->ptr[i];
+		if (left->ptr[left->keynum+1+i] != NULL)
+			left->ptr[left->keynum+1+i]->parent =left;
+	}
+	//将父节点中index对应的内容添加到相邻左节点中
 	left->key[left->keynum+1] = parent->key[index];
+	//删除节点
 	delete cur;
+	//将父节点index之后的序列向前移动一个位置
 	for (int i=index; i<=parent->keynum; i++){
 		parent->key[i] = parent->key[i+1];
 		parent->ptr[i] = parent->ptr[i+1];
@@ -65,15 +73,15 @@ void BTree::merge(TreeNode* parent, int index, TreeNode* left, TreeNode* cur){
 }
 
 void BTree::RotateLeft(TreeNode* parent, int index, TreeNode* cur, TreeNode* right){
-	cur->key[cur->keynum+1] = parent->key[index+1];	//父节点中某个关键字下移
-	cur->ptr[cur->keynum+1] = right->ptr[0];
+	cur->key[cur->keynum+1] = parent->key[index+1];	//此时将父节点中index+1位置的关键字下移到删除关键字的节点中
+	cur->ptr[cur->keynum+1] = right->ptr[0];	
 	if (cur->ptr[cur->keynum+1])
 		cur->ptr[cur->keynum+1]->parent = cur;
-	cur->keynum++;
+	cur->keynum++;	
 
-	//右兄弟上移一个节点到父亲节点
+	//将右兄弟最小关键字上移到父亲节点
 	parent->key[index+1] = right->key[1];
-	right->key[1] = 0;
+	//将右兄弟的关键字序列向前移动一个位置
 	for (int i=0; i<=right->keynum; i++){
 		right->key[i] = right->key[i+1];
 		right->ptr[i] = right->ptr[i+1];
@@ -82,17 +90,19 @@ void BTree::RotateLeft(TreeNode* parent, int index, TreeNode* cur, TreeNode* rig
 }
 
 void BTree::RotateRight(TreeNode* parent, int index, TreeNode* cur, TreeNode* left){
+	//将删除关键字的节点中的关键字序列后移一个位置
 	for (int i=cur->keynum; i>=1; i--){
 		cur->key[i+1] = cur->key[i];
 		cur->ptr[i+1] = cur->ptr[i];
 	}
-	cur->key[1] = parent->key[index];
-	cur->ptr[0] = left->ptr[left->keynum];
+	cur->key[1] = parent->key[index];	//将父节点index位置的关键字下移到删除关键字的节点中
+	cur->ptr[0] = left->ptr[left->keynum];	
 	if (cur->ptr[0])
 		cur->ptr[0]->parent = cur;
 	left->ptr[left->keynum] = NULL;
 	cur->keynum++;
 
+	//将左节点中的最大关键字上移至父节点
 	parent->key[index] = left->key[left->keynum];
 	left->key[left->keynum] = 0;
 	left->keynum--;
@@ -101,10 +111,11 @@ void BTree::RotateRight(TreeNode* parent, int index, TreeNode* cur, TreeNode* le
 
 
 void BTree::DeleteBalance(TreeNode* node){
-	int lb = m / 2;
+	int lb = m / 2;	//lb为(向上取整)[m/2]-1
 	TreeNode* parent = node->parent;
 	while (parent!=NULL &&  node->keynum < lb){
 		//说明删除了关键字后，原来的节点已经不满足B-树的要求
+		//此时被删除关键字的节点剩余的关键字少于[m/2]-1,违背了B树的性质
 		int index = 0;
 		//找到node在其父亲节点中的位置
 		for (int i=0; i<=parent->keynum; i++)
@@ -118,20 +129,23 @@ void BTree::DeleteBalance(TreeNode* node){
 		if (index+1 <= parent->keynum)	//如果当前节点有右节点
 			right = parent->ptr[index+1];
 		if (right!=NULL && right->keynum>lb){
-			//关键字个数等于[m/2]-1,相邻的右节点中关键字数目大于[m/2]-1
+			//相邻的右节点中关键字数目大于[m/2]-1
 			this->RotateLeft(parent,index,node,right);
 			break;
 		}
 		else if (left!=NULL && left->keynum>lb){
-			//右兄弟不满足，左兄弟满足
+			//相邻的左节点中关键字数目大于[m/2]-1
 			this->RotateRight(parent,index,node,left);
 			break;
 		}
 		else {
-			if (left != NULL)
+			//若相邻左右节点的关键字数目都等于[m/2]-1，那么需要进行合并
+			if (left != NULL)	//如果相邻左节点存在，合并到左节点
 				this->merge(parent,index,left,node);
-			else
+			else	//如果相邻右节点不为空，则合并到右节点
 				this->merge(parent,index+1,node,right);
+			//合并后，父节点的关键字可能少于[m/2]-1，可能违反B树的性质
+			//将父节点设置为当前节点
 			node = parent;
 			parent = node->parent;
 		}	
@@ -144,7 +158,8 @@ void BTree::DeleteBalance(TreeNode* node){
 
 void BTree::Delete(TreeNode* node, int index){
 	if (node->ptr[index-1] && node->ptr[index]) {
-		//此处说明该节点是非叶子节点
+		//此处说明该节点是非叶子节点，且被删除关键字为该节点中的第index个关键字key[index]
+		//可从node->ptr[index]所指的子树中找出最小关键字Y,代替key[index]的位置，然后从叶子节点中删去Y
 		TreeNode* temp = node->ptr[index];
 		while (temp->ptr[0] != NULL)
 			temp = temp->ptr[0];
@@ -153,14 +168,17 @@ void BTree::Delete(TreeNode* node, int index){
 		node->key[index] = res; 
 	}
 	else {
+		//此处说明该节点是叶子，直接删掉该节点
 		for (int i=index; i<=node->keynum; i++)
 			node->key[i] = node->key[i+1];
 		node->keynum--;
+		//删除节点可能会影响B树的性质，调用DeleteBalance来恢复B树的性质
 		this->DeleteBalance(node);
 	}
 }
 
 int BTree::search(TreeNode*& node, int val){
+	//找出并返回关键字val在node节点中关键序列的插入位置
 	int i = 0;
 	for (int j=1; j<=node->keynum; j++)
 		if (node->key[j] <= val)
@@ -181,10 +199,12 @@ bool BTree::delete_BTree(int val){
 	TreeNode* node = NULL;
 	int index = 0;
 	if (this->searchKey_BTree(val,node,index) == true){
+		//找出关键字val所在的节点和相应下标，进行删除
 		this->Delete(node,index);
 		return true;
 	}
 	else
+		//如果没有找到,则直接返回
 		return false;
 }
 
@@ -200,6 +220,7 @@ void BTree::split(TreeNode*& t, int middle, TreeNode*& rhs, int& k){
 		rhs->ptr[0]->parent = rhs;
 	t->ptr[middle] = NULL;
 			
+	//将右半部分拷贝到rhs节点
 	for (int i=1; i<=m-middle; i++){
 		rhs->key[i] = t->key[middle+i], t->key[middle+i] = 0;
 		rhs->ptr[i] = t->ptr[middle+i], t->ptr[middle+i] = NULL;
@@ -211,13 +232,13 @@ void BTree::split(TreeNode*& t, int middle, TreeNode*& rhs, int& k){
 	t->keynum = middle - 1;
 }
 
-void BTree::insert(TreeNode*& t, int i, int val, TreeNode* node){
-	for (int j=t->keynum; j>=i+1; j--){
+void BTree::insert(TreeNode*& t, int index, int val, TreeNode* node){
+	for (int j=t->keynum; j>=index+1; j--){
 		t->key[j+1] = t->key[j];
 		t->ptr[j+1] = t->ptr[j];
 	}
-	t->key[i+1] = val;
-	t->ptr[i+1] = node;
+	t->key[index+1] = val;
+	t->ptr[index+1] = node;
 	t->keynum++;
 }
 /* 
@@ -249,6 +270,7 @@ bool BTree::insert_BTree(int val){
 	int index = 0;
 	if (this->searchKey_BTree(val,node,index) == true)
 		return false;
+	//返回的node为关键字val应插入的叶子节点，index为在node关键字序列中的插入位置
 
 	bool finished = false;
 	int curk = val;
@@ -257,18 +279,21 @@ bool BTree::insert_BTree(int val){
 		//不管是否合法，直接插入到找到的那个关键字序列中
 		this->insert(node,index,curk,rhs);
 		if (node->keynum < m) 
-			finished = true;	//插入成功
+			finished = true;	//如果插入的终端节点上的关键字数量满足keynum<=m-1,则插入不影响B树性质
 		else {
+			//否则该关键字的插入影响了B树的性质，需要对终端节点进行分裂
 			int middle = (m + 1) / 2;
 			this->split(node,middle,rhs,curk);
 			if (node->parent == NULL)
 				break;	//如果node已经是根节点了，则直接退出
 			else {
+				//此时curk为分裂节点的中间关键字,rhs为包含右半部分关键字的节点，找出curk在父节点的插入位置，并在下次循环中插入父节点中.
 				node = node->parent;
 				index = this->search(node,curk);
 			}
 		}
 	}
+	//如果此时finished为false,说明因为分裂的原因需要新生一个根节点
 	if (finished == false)
 		this->newroot(head,node,curk,rhs);
 	return true;
@@ -282,16 +307,18 @@ bool BTree::searchKey_BTree(int val, TreeNode*& node, int& index){
 	while (p != NULL){
 		int i = search(p,val);
 		if (i>0 && p->key[i]==val){
+			//若在B树中找到该关键字则返回
 			index = i;
 			node = p;
 			return true;
 		}
 		else {
 			node = p;
-			index = i;	//方便插入
-			p = p->ptr[i];
+			index = i;	
+			p = p->ptr[i];	
 		}
 	}
+	//若在B树中找不到val关键字，则最终返回的node节点是叶子节点，且index为关键字val在node节点的关键字序列中的插入位置
 	return false;
 }
 
